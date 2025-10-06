@@ -1,0 +1,26 @@
+.editor-container {
+  max-width: 800px;
+  margin: 20px auto;
+}
+
+.custom-quill {
+  height: 400px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.custom-quill .ql-toolbar {
+  border-radius: 8px 8px 0 0;
+  background-color: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+}
+
+.custom-quill .ql-container {
+  border: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px;
+  font-family: 'Arial', sans-serif;
+  font-size: 16px;
+}
