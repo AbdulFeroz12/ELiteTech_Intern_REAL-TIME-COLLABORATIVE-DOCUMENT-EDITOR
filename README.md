@@ -1,4 +1,4 @@
-# Pro Docs Editor with Chat
+# REAL TIME COLLABORATIVE DOCUMENT EDITOR
 
 A lightweight and feature-rich online document editor with **real-time chat**, built with **React** and **Node.js**, designed for creating, editing, and collaborating on documents seamlessly.
 
