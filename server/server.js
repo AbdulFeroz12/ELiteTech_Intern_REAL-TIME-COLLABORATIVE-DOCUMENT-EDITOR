@@ -229,7 +229,7 @@ io.on('connection', (socket) => {
 });
 */
 
-
+/*
 
 require('dotenv').config();
 const express = require('express');
@@ -241,6 +241,8 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const docRoutes = require('./routes/docRoutes');
 const Document = require('./models/Document');
+
+
 
 const app = express();
 
@@ -372,4 +374,109 @@ io.on('connection', socket => {
 // Start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+});*/
+
+
+require('dotenv').config();
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const mongoose = require('mongoose');
+const cors = require('cors');
+
+const authRoutes = require('./routes/auth');
+const docRoutes = require('./routes/docRoutes');
+const Document = require('./models/Document');
+
+const app = express();
+app.use(express.json());
+
+// CORS: only allow your frontend
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+app.use(cors({
+  origin: FRONTEND_URL,
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
+// MongoDB connection
+const MONGO_URI = process.env.MONGO_URI;
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => console.error('❌ MongoDB error:', err.message));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api', docRoutes);
+
+// List all documents
+app.get('/api/docs', async (req, res) => {
+  try {
+    const docs = await Document.find({}, '_id updatedAt').sort({ updatedAt: -1 });
+    res.json(docs.map(d => ({ docId: d._id, updatedAt: d.updatedAt })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch documents' });
+  }
 });
+
+// HTTP server + Socket.io
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: FRONTEND_URL, credentials: true } });
+
+// Track online users per doc
+const onlineUsers = {};
+
+io.on('connection', socket => {
+  console.log('🔌 Socket connected:', socket.id);
+
+  socket.on('join-doc', async ({ docId, clientId, username }) => {
+    if (!docId) return;
+    socket.join(docId);
+    socket.docId = docId;
+    socket.clientId = clientId;
+
+    if (!onlineUsers[docId]) onlineUsers[docId] = {};
+    onlineUsers[docId][clientId] = username || `User-${clientId.slice(0,4)}`;
+
+    let doc = await Document.findById(docId);
+    if (!doc) {
+      doc = new Document({ _id: docId, content: `<h2>Untitled Document</h2>` });
+      await doc.save();
+    }
+
+    socket.emit('doc-load', { content: doc.content, updatedAt: doc.updatedAt });
+    io.to(docId).emit('presence-update', Object.values(onlineUsers[docId]));
+  });
+
+  socket.on('doc-update', async ({ docId, content, clientId }) => {
+    if (!docId) return;
+    try {
+      await Document.findByIdAndUpdate(docId, { content, updatedAt: new Date() }, { upsert: true });
+    } catch (err) {
+      console.error('🛑 Save error:', err);
+    }
+    socket.to(docId).emit('doc-update', { content, clientId });
+  });
+
+  socket.on('chat-message', ({ docId, username, text }) => {
+    if (!docId || !text) return;
+    io.to(docId).emit('chat-message', { username, text });
+  });
+
+  socket.on('disconnect', () => {
+    const { docId, clientId } = socket;
+    if (docId && onlineUsers[docId] && clientId) {
+      delete onlineUsers[docId][clientId];
+      io.to(docId).emit('presence-update', Object.values(onlineUsers[docId]));
+    }
+    console.log('❌ Socket disconnected:', socket.id);
+  });
+});
+
+// Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
