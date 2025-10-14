@@ -9,7 +9,8 @@ import ChatSidebar from "../components/ChatSidebar";
 import { createDoc } from "../utils/api";
 import { useTheme } from "../context/ThemeContext";
 
-const SERVER = process.env.REACT_APP_SERVER_URL || "http://localhost:5000";
+const SERVER = "https://elitetech-intern-real-time-collaborative-gczw.onrender.com";
+
 
 export default function EditorPage() {
   const { theme, toggleTheme } = useTheme();
