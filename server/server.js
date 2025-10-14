@@ -251,7 +251,7 @@ app.use(express.json());
 
 
 app.use(cors({
-  origin: "https://elitetech-intern-real-time-collaborative-wn06.onrender.com",
+  origin: "https://elitetech-intern-real-time-collaborative-o724.onrender.com",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
