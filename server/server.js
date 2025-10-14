@@ -243,8 +243,15 @@ const docRoutes = require('./routes/docRoutes');
 const Document = require('./models/Document');
 
 const app = express();
-app.use(cors());
+
 app.use(express.json());
+
+const CLIENT_URL = "https://elitetech-intern-real-time-collaborative-wn06.onrender.com";
+
+app.use(cors({
+  origin: CLIENT_URL,
+  credentials: true
+}));
 
 // MongoDB connection
 const PORT = process.env.PORT || 5000;
