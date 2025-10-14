@@ -246,12 +246,16 @@ const app = express();
 
 app.use(express.json());
 
-const CLIENT_URL = "https://elitetech-intern-real-time-collaborative-wn06.onrender.com";
+
+
+
 
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: "https://elitetech-intern-real-time-collaborative-wn06.onrender.com",
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
+
 
 // MongoDB connection
 const PORT = process.env.PORT || 5000;
