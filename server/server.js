@@ -376,7 +376,6 @@ server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });*/
 
-
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -391,18 +390,23 @@ const Document = require('./models/Document');
 const app = express();
 app.use(express.json());
 
-// CORS: only allow your frontend
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+// Use FRONTEND_URL from environment
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || '*',
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 
 // MongoDB connection
+const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
-mongoose
-  .connect(MONGO_URI)
+
+if (!MONGO_URI) {
+  console.error('❌ MONGO_URI is not defined in environment variables!');
+  process.exit(1);
+}
+
+mongoose.connect(MONGO_URI)
   .then(() => console.log('✅ MongoDB connected'))
   .catch(err => console.error('❌ MongoDB error:', err.message));
 
@@ -410,26 +414,30 @@ mongoose
 app.use('/api/auth', authRoutes);
 app.use('/api', docRoutes);
 
-// List all documents
+// Endpoint to list all documents
 app.get('/api/docs', async (req, res) => {
   try {
     const docs = await Document.find({}, '_id updatedAt').sort({ updatedAt: -1 });
-    res.json(docs.map(d => ({ docId: d._id, updatedAt: d.updatedAt })));
+    res.json(docs.map(d => ({
+      docId: d._id,
+      updatedAt: d.updatedAt,
+    })));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch documents' });
   }
 });
 
-// HTTP server + Socket.io
+// Create HTTP server and Socket.io
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: FRONTEND_URL, credentials: true } });
+const io = new Server(server, { cors: { origin: '*' } });
 
-// Track online users per doc
-const onlineUsers = {};
+// Track online users per document
+const onlineUsers = {}; // { docId: { clientId: username } }
 
 io.on('connection', socket => {
   console.log('🔌 Socket connected:', socket.id);
 
+  // Join a document
   socket.on('join-doc', async ({ docId, clientId, username }) => {
     if (!docId) return;
     socket.join(docId);
@@ -437,18 +445,23 @@ io.on('connection', socket => {
     socket.clientId = clientId;
 
     if (!onlineUsers[docId]) onlineUsers[docId] = {};
-    onlineUsers[docId][clientId] = username || `User-${clientId.slice(0,4)}`;
+    onlineUsers[docId][clientId] = username || `User-${clientId.slice(0, 4)}`;
 
     let doc = await Document.findById(docId);
     if (!doc) {
-      doc = new Document({ _id: docId, content: `<h2>Untitled Document</h2>` });
+      doc = new Document({
+        _id: docId,
+        content: `<h2>Untitled Document (${docId})</h2><p>Start typing...</p>`,
+      });
       await doc.save();
     }
 
     socket.emit('doc-load', { content: doc.content, updatedAt: doc.updatedAt });
     io.to(docId).emit('presence-update', Object.values(onlineUsers[docId]));
+    console.log(`📄 ${socket.id} joined doc ${docId}`);
   });
 
+  // Document updates
   socket.on('doc-update', async ({ docId, content, clientId }) => {
     if (!docId) return;
     try {
@@ -459,11 +472,23 @@ io.on('connection', socket => {
     socket.to(docId).emit('doc-update', { content, clientId });
   });
 
+  // Chat messages
   socket.on('chat-message', ({ docId, username, text }) => {
     if (!docId || !text) return;
     io.to(docId).emit('chat-message', { username, text });
   });
 
+  // Chat file sharing
+  socket.on('chat-file', ({ docId, username, fileName, fileData }) => {
+    if (!docId || !fileName || !fileData) return;
+    io.to(docId).emit('chat-message', {
+      username,
+      text: `${username} shared a file:`,
+      file: { fileName, fileData },
+    });
+  });
+
+  // Disconnect
   socket.on('disconnect', () => {
     const { docId, clientId } = socket;
     if (docId && onlineUsers[docId] && clientId) {
@@ -475,8 +500,6 @@ io.on('connection', socket => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
