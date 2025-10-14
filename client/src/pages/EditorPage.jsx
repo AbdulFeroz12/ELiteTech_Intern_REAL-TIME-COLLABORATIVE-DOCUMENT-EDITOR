@@ -12,6 +12,7 @@ import { useTheme } from "../context/ThemeContext";
 const SERVER = "https://elitetech-intern-real-time-collaborative-gczw.onrender.com";
 
 
+
 export default function EditorPage() {
   const { theme, toggleTheme } = useTheme();
 
