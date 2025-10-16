@@ -400,7 +400,7 @@ app.use(express.json());
 
 app.use(cors({
   origin: [
-    "https://elitetech-intern-real-time-collaborative-wn06.onrender.com",
+    "https://elitetech-intern-real-time-collaborative-mzis.onrender.com",
     "http://localhost:3000"
   ],
   credentials: true
