@@ -391,12 +391,20 @@ const app = express();
 app.use(express.json());
 
 // Use FRONTEND_URL from environment
-app.use(cors({
+/*app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
+*/
 
+app.use(cors({
+  origin: [
+    "https://elitetech-intern-real-time-collaborative-wn06.onrender.com",
+    "http://localhost:3000"
+  ],
+  credentials: true
+}));
 // MongoDB connection
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
